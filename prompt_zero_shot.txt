@@ -1,0 +1,63 @@
+Write a SQLite query that answers the question using the database described below.
+
+This database contains athlete results and competition venues for the 2002 Winter
+Olympics in Salt Lake City. Use only the tables and columns shown here.
+
+Rules for interpreting the data:
+- An event is an entire medal competition, such as the men's hockey tournament.
+  Individual matches, dates, finishing places, scores, and countries are not stored.
+- Each result row describes one athlete in one event. A NULL medal means no medal.
+- For athlete medal counts, count only result rows with a non-NULL medal. Team members
+  each have their own result; these counts are not national medal totals.
+- Identify athletes by athlete_id. Different athletes can have the same name.
+- An event can have multiple venues. Joining those venues can duplicate a result;
+  count each athlete-event result only once. The venue links do not tell us where
+  an individual athlete competed or where a medal was physically awarded.
+- When asked who has the most medals, include every athlete tied for the highest
+  count. Include each athlete's name and medal count in the output.
+- Athlete and event names retain the source dataset's spelling, which can include
+  missing accented letters, full names, or aliases.
+
+Output:
+- Return one read-only SQLite SELECT query, optionally starting with WITH.
+- Return SQL only, without Markdown, explanations, or an answer from memory.
+- If the stored data cannot answer the question, return UNSUPPORTED: followed by
+  a short reason instead of inventing columns or results.
+
+Database layout:
+
+CREATE TABLE athlete (
+    athlete_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE event (
+    event_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE venue (
+    venue_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    location TEXT NOT NULL
+);
+
+CREATE TABLE result (
+    athlete_id INTEGER NOT NULL,
+    event_id INTEGER NOT NULL,
+    medal TEXT CHECK (medal IN ('Gold', 'Silver', 'Bronze')),
+    PRIMARY KEY (athlete_id, event_id),
+    FOREIGN KEY (athlete_id) REFERENCES athlete (athlete_id),
+    FOREIGN KEY (event_id) REFERENCES event (event_id)
+);
+
+CREATE TABLE event_venue (
+    event_id INTEGER NOT NULL,
+    venue_id INTEGER NOT NULL,
+    PRIMARY KEY (event_id, venue_id),
+    FOREIGN KEY (event_id) REFERENCES event (event_id),
+    FOREIGN KEY (venue_id) REFERENCES venue (venue_id)
+);
+
+Question:
+Which athletes won the most medals?

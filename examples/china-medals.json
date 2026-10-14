@@ -1,0 +1,23 @@
+{
+  "question": "How many medals did China win at the 2002 Winter Olympics?",
+  "style": "zero-shot",
+  "recordedAt": "2026-10-14T17:55:02.526Z",
+  "settings": {
+    "model": "gpt-6-luna",
+    "reasoning": {
+      "effort": "low"
+    },
+    "max_output_tokens": 2048,
+    "store": false
+  },
+  "sql": "WITH medal_entries AS (\n    SELECT DISTINCT\n        r.country_code,\n        r.event_id,\n        r.medal,\n        CASE\n            WHEN e.is_team_event = 1 THEN r.team\n            ELSE CAST(r.athlete_id AS TEXT)\n        END AS entry\n    FROM result AS r\n    JOIN event AS e ON e.event_id = r.event_id\n    WHERE r.medal IS NOT NULL\n)\nSELECT COUNT(*) AS medal_count\nFROM medal_entries AS m\nJOIN country AS c ON c.country_code = m.country_code\nWHERE c.name = 'China';",
+  "rows": [
+    {
+      "medal_count": 8
+    }
+  ],
+  "answer": "China won 8 medals at the 2002 Winter Olympics.",
+  "databaseSha256": "14c194e33626e111c199f9a7a8891bc4fbf7b0df85bc74bd8313d137a410d10b",
+  "databaseUnchanged": true,
+  "apiRequests": 2
+}

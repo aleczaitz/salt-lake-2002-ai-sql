@@ -1,0 +1,24 @@
+{
+  "name": "salt-lake-2002-sql",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env cli.ts",
+    "build-db": "node build_db.ts",
+    "build-full-db": "node build_db.ts --full",
+    "import-data": "node import_data.ts",
+    "generate-sql": "node --env-file=.env generate_sql.ts",
+    "answer": "node --env-file=.env answer_question.ts",
+    "compare-prompts": "node --env-file=.env compare_prompts.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test_database.ts test_import.ts test_openai.ts test_answer.ts test_query.ts test_cli.ts test_experiments.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "csv-parse": "^7.0.3",
+    "typescript": "^7.0.2"
+  }
+}

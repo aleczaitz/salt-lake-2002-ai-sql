@@ -1,0 +1,19 @@
+{
+  "questionId": "country-gold-leader",
+  "question": "Which country won the most gold medals, and how many? Include all ties.",
+  "style": "zero-shot",
+  "startedAt": "2026-10-14T17:25:11.212Z",
+  "finishedAt": "2026-10-14T17:25:16.305Z",
+  "status": "answered",
+  "failedStage": null,
+  "apiRequests": 2,
+  "sqlResponse": "WITH gold_medals AS (\n    SELECT DISTINCT\n        r.country_code,\n        r.event_id,\n        r.medal,\n        CASE WHEN e.is_team_event = 1 THEN r.team\n             ELSE CAST(r.athlete_id AS TEXT)\n        END AS medal_entry\n    FROM result AS r\n    JOIN event AS e ON e.event_id = r.event_id\n    WHERE r.medal = 'Gold'\n),\ncountry_totals AS (\n    SELECT country_code, COUNT(*) AS gold_medals\n    FROM gold_medals\n    GROUP BY country_code\n)\nSELECT c.name AS country, ct.gold_medals\nFROM country_totals AS ct\nJOIN country AS c ON c.country_code = ct.country_code\nWHERE ct.gold_medals = (SELECT MAX(gold_medals) FROM country_totals);",
+  "rows": [
+    {
+      "country": "Norway",
+      "gold_medals": 13
+    }
+  ],
+  "answer": "Norway won the most gold medals, with 13.",
+  "error": null
+}

@@ -1,0 +1,35 @@
+{
+  "questionId": "multiple-venues",
+  "question": "Which medal events used more than one venue, and how many venues did each use?",
+  "style": "zero-shot",
+  "startedAt": "2026-10-14T17:25:32.321Z",
+  "finishedAt": "2026-10-14T17:25:38.510Z",
+  "status": "answered",
+  "failedStage": null,
+  "apiRequests": 2,
+  "sqlResponse": "SELECT e.name, COUNT(DISTINCT ev.venue_id) AS venue_count\nFROM event AS e\nJOIN event_venue AS ev ON ev.event_id = e.event_id\nGROUP BY e.event_id, e.name\nHAVING COUNT(DISTINCT ev.venue_id) > 1;",
+  "rows": [
+    {
+      "name": "Ice Hockey Men's Ice Hockey",
+      "venue_count": 2
+    },
+    {
+      "name": "Ice Hockey Women's Ice Hockey",
+      "venue_count": 2
+    },
+    {
+      "name": "Nordic Combined Men's Individual",
+      "venue_count": 2
+    },
+    {
+      "name": "Nordic Combined Men's Sprint",
+      "venue_count": 2
+    },
+    {
+      "name": "Nordic Combined Men's Team",
+      "venue_count": 2
+    }
+  ],
+  "answer": "Ice Hockey Men's Ice Hockey and Ice Hockey Women's Ice Hockey each used 2 venues. Nordic Combined Men's Individual, Nordic Combined Men's Sprint, and Nordic Combined Men's Team also each used 2 venues.",
+  "error": null
+}

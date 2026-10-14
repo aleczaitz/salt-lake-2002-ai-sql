@@ -1,0 +1,14 @@
+{
+  "questionId": "unsupported-final-score",
+  "question": "What was the score of the men's ice hockey final?",
+  "style": "zero-shot",
+  "startedAt": "2026-10-14T17:25:52.943Z",
+  "finishedAt": "2026-10-14T17:25:55.809Z",
+  "status": "unsupported",
+  "failedStage": null,
+  "apiRequests": 1,
+  "sqlResponse": "UNSUPPORTED: Match-level scores are not stored; results describe athletes by event only.",
+  "rows": null,
+  "answer": "This database cannot answer that question. Match-level scores are not stored; results describe athletes by event only.",
+  "error": null
+}

@@ -1,0 +1,18 @@
+{
+  "questionId": "canada-mens-hockey",
+  "question": "How many medals did Canada win in men's ice hockey?",
+  "style": "zero-shot",
+  "startedAt": "2026-10-14T17:16:09.413Z",
+  "finishedAt": "2026-10-14T17:16:16.745Z",
+  "status": "answered",
+  "failedStage": null,
+  "apiRequests": 2,
+  "sqlResponse": "SELECT COUNT(DISTINCT r.country_code || ':' || r.event_id || ':' || r.medal || ':' || r.team)\nFROM result AS r\nJOIN country AS c ON c.country_code = r.country_code\nJOIN event AS e ON e.event_id = r.event_id\nWHERE c.name = 'Canada'\n  AND lower(e.name) LIKE '%ice hockey%'\n  AND lower(e.name) LIKE '%men%'\n  AND r.medal IS NOT NULL;",
+  "rows": [
+    {
+      "COUNT(DISTINCT r.country_code || ':' || r.event_id || ':' || r.medal || ':' || r.team)": 2
+    }
+  ],
+  "answer": "Canada won 2 medals in men's ice hockey.",
+  "error": null
+}

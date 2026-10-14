@@ -1,0 +1,128 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { parse } from 'csv-parse/sync';
+import { PROJECT_DIR } from './build_db.ts';
+
+const SOURCE_URL = 'https://raw.githubusercontent.com/rgriff23/Olympic_history/b14dd25bf2b63c562fc7771c70439d005696ea4c/data/athlete_events.csv';
+const SOURCE_SHA256 = '675c6e6bb445107614c85ed6b886a66ff094cdaeb58443da14b9e9cd98fc56bd';
+
+// Locations and sport mappings: https://www.olympedia.org/venues/editions/47
+const venues: [number, string, string][] = [
+  [1, 'Utah Olympic Oval', 'Kearns, Utah'],
+  [2, 'Utah Olympic Park', 'Park City, Utah'],
+  [3, 'Soldier Hollow', 'Wasatch Mountain State Park, Utah'],
+  [4, 'Snowbasin Ski Resort', 'Huntsville, Utah'],
+  [5, 'Deer Valley Resort', 'Deer Valley, Utah'],
+  [6, 'Park City Mountain Resort', 'Park City, Utah'],
+  [7, 'Salt Lake Ice Center', 'Salt Lake City, Utah'],
+  [8, 'E Center', 'West Valley City, Utah'],
+  [9, 'The Peaks Ice Arena', 'Provo, Utah'],
+  [10, 'The Ice Sheet', 'Ogden, Utah'],
+];
+const sportVenues = new Map<string, number[]>([
+  ['Speed Skating', [1]], ['Nordic Combined', [2, 3]],
+  ['Biathlon', [3]], ['Cross Country Skiing', [3]],
+  ['Bobsleigh', [2]], ['Luge', [2]], ['Skeleton', [2]], ['Ski Jumping', [2]],
+  ['Freestyle Skiing', [5]], ['Snowboarding', [6]],
+  ['Figure Skating', [7]], ['Short Track Speed Skating', [7]],
+  ['Ice Hockey', [8, 9]], ['Curling', [10]],
+]);
+// FIS resolves conflicting Olympedia venue listings for slalom and giant slalom.
+// https://www.fis-ski.com/DB/general/event-details.html?eventid=8479&sectorcode=AL
+const alpineVenues = new Map([
+  ['Downhill', [4]], ['Super G', [4]], ['Combined', [4]],
+  ['Slalom', [5]], ['Giant Slalom', [6]],
+]);
+
+export function generateDataSql(csv: string): string {
+  const required = ['ID', 'Name', 'Games', 'Year', 'Season', 'City', 'Sport', 'Event', 'Medal', 'NOC', 'Team'];
+  const records = parse<Record<string, string>>(csv, {
+    columns: header => {
+      assert(required.every(column => header.includes(column)), 'Missing CSV columns');
+      return header;
+    },
+    skip_empty_lines: true,
+  }).filter(row => row.Games === '2002 Winter');
+  assert(records.length > 0, 'No 2002 Winter results found');
+  const athletes = new Map<number, string>();
+  const events = new Map<string, number>();
+  const countries = new Map<string, string>();
+  const resultKeys = new Set<string>();
+  const eventRows: string[] = [];
+  const resultRows: string[] = [];
+  const venueLinks: string[] = [];
+  const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
+
+  for (const row of records) {
+    assert(row.Year === '2002' && row.Season === 'Winter' && row.City === 'Salt Lake City', 'Inconsistent Games data');
+    const athleteId = Number(row.ID);
+    assert(/^[1-9]\d*$/.test(row.ID) && Number.isSafeInteger(athleteId), 'Invalid athlete ID');
+    assert(row.Name?.trim() && row.Event?.trim() && !`${row.Name}${row.Event}`.includes('\0'), 'Missing or invalid name');
+    assert(['Gold', 'Silver', 'Bronze', 'NA'].includes(row.Medal), 'Invalid medal');
+    assert(/^[A-Z]{3}$/.test(row.NOC), 'Invalid country code');
+    assert(row.Team?.trim() && !row.Team.includes('\0'), 'Missing or invalid team');
+    const countryName = row.Team.replace(/-\d+$/, '');
+    assert(countryName.trim(), 'Missing country name');
+    assert(!countries.has(row.NOC) || countries.get(row.NOC) === countryName, 'Conflicting country names');
+    countries.set(row.NOC, countryName);
+    assert(!athletes.has(athleteId) || athletes.get(athleteId) === row.Name, 'Conflicting athlete names');
+    athletes.set(athleteId, row.Name);
+    const locations = row.Sport === 'Alpine Skiing'
+      ? alpineVenues.get(row.Event.replace(/^Alpine Skiing (Men|Women)'s /, ''))
+      : sportVenues.get(row.Sport);
+    assert(locations && row.Event.startsWith(`${row.Sport} `), `Unknown event venue: ${row.Event}`);
+    if (!events.has(row.Event)) {
+      const eventId = events.size + 1;
+      events.set(row.Event, eventId);
+      const isTeam = ['Bobsleigh', 'Ice Hockey', 'Curling'].includes(row.Sport)
+        || /\b(Relay|Team|Pairs|Ice Dancing|Doubles)\b/.test(row.Event);
+      eventRows.push(`INSERT INTO event VALUES (${eventId}, ${quote(row.Event)}, ${Number(isTeam)});`);
+      for (const venueId of locations) {
+        venueLinks.push(`INSERT INTO event_venue VALUES (${eventId}, ${venueId});`);
+      }
+    }
+    const eventId = events.get(row.Event)!;
+    const key = `${athleteId}:${eventId}`;
+    assert(!resultKeys.has(key), `Duplicate athlete-event result: ${key}`);
+    resultKeys.add(key);
+    resultRows.push(`INSERT INTO result VALUES (${athleteId}, ${eventId}, ${row.Medal === 'NA' ? 'NULL' : quote(row.Medal)}, ${quote(row.NOC)}, ${quote(row.Team)});`);
+  }
+  return [
+    '-- Generated by import_data.ts; all 2002 Winter rows, retaining source athlete IDs and names.',
+    `-- Source: ${SOURCE_URL}`,
+    `-- Source SHA-256: ${SOURCE_SHA256}`,
+    '-- Venue sources and limitations are documented in README.md.',
+    ...[...athletes].map(([id, name]) => `INSERT INTO athlete VALUES (${id}, ${quote(name)});`),
+    ...eventRows,
+    ...[...countries].sort(([a], [b]) => a.localeCompare(b)).map(([code, name]) => `INSERT INTO country VALUES (${quote(code)}, ${quote(name)});`),
+    ...venues.map(([id, name, location]) => `INSERT INTO venue VALUES (${id}, ${quote(name)}, ${quote(location)});`),
+    ...resultRows,
+    ...venueLinks,
+    '',
+  ].join('\n');
+}
+
+if (import.meta.main) {
+  const response = await fetch(SOURCE_URL, { signal: AbortSignal.timeout(60_000) });
+  assert(response.ok, `Dataset download failed: ${response.status}`);
+  const csv = await response.text();
+  assert.equal(createHash('sha256').update(csv).digest('hex'), SOURCE_SHA256, 'Dataset changed; review before importing');
+  const sql = generateDataSql(csv);
+  const connection = new DatabaseSync(':memory:');
+  try {
+    connection.exec('PRAGMA foreign_keys = ON;');
+    connection.exec(readFileSync(join(PROJECT_DIR, 'schema.sql'), 'utf8'));
+    connection.exec(sql);
+    for (const [table, expected] of Object.entries({ athlete: 2399, event: 78, country: 77, venue: 10, result: 4109, event_venue: 83 })) {
+      assert.equal(connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get()?.count, expected);
+    }
+    assert.deepEqual(connection.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally {
+    connection.close();
+  }
+  writeFileSync(join(PROJECT_DIR, 'full_data.sql'), sql);
+  console.log('Saved full_data.sql: 2,399 athletes, 78 events, 77 countries, 10 venues, 4,109 results.');
+}

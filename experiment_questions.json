@@ -1,0 +1,98 @@
+[
+  {
+    "id": "distinct-athletes",
+    "question": "How many different athletes represented the United States?",
+    "purpose": "Count each athlete once even if they entered multiple events.",
+    "referenceSql": "SELECT COUNT(DISTINCT r.athlete_id) AS athlete_count\nFROM result AS r\nJOIN country AS c ON c.country_code = r.country_code\nWHERE c.name = 'United States';",
+    "expectedRows": [
+      {
+        "athlete_count": 202
+      }
+    ],
+    "expectedAnswer": "202 athletes represented the United States.",
+    "reviewNotes": "There are 313 participation rows for these 202 athletes. Counting rows would overcount athletes."
+  },
+  {
+    "id": "country-gold-leader",
+    "question": "Which country won the most gold medals, and how many? Include all ties.",
+    "purpose": "Count country medals correctly for teams and individual ties, then find all leaders.",
+    "referenceSql": "WITH gold_awards AS (\n    SELECT DISTINCT r.country_code, r.event_id,\n        CASE WHEN e.is_team_event = 1 THEN r.team ELSE CAST(r.athlete_id AS TEXT) END AS entry\n    FROM result AS r\n    JOIN event AS e ON e.event_id = r.event_id\n    WHERE r.medal = 'Gold'\n), country_totals AS (\n    SELECT c.name AS country, COUNT(*) AS gold_medals\n    FROM gold_awards AS g\n    JOIN country AS c ON c.country_code = g.country_code\n    GROUP BY c.country_code, c.name\n)\nSELECT country, gold_medals\nFROM country_totals\nWHERE gold_medals = (SELECT MAX(gold_medals) FROM country_totals)\nORDER BY country;",
+    "expectedRows": [
+      {
+        "country": "Norway",
+        "gold_medals": 13
+      }
+    ],
+    "expectedAnswer": "Norway won the most gold medals, with 13.",
+    "reviewNotes": "Team medals count once per entry, but separate individual winners tied for gold must remain separate. Check that the SQL handles ties, even though this result has one leader."
+  },
+  {
+    "id": "canada-mens-hockey",
+    "question": "How many medals did Canada win in men's ice hockey?",
+    "purpose": "Distinguish a country medal from athlete medals and filter the men's event precisely.",
+    "referenceSql": "WITH awards AS (\n    SELECT DISTINCT r.country_code, r.event_id, r.medal, r.team\n    FROM result AS r\n    JOIN event AS e ON e.event_id = r.event_id\n    JOIN country AS c ON c.country_code = r.country_code\n    WHERE c.name = 'Canada'\n      AND e.name = 'Ice Hockey Men''s Ice Hockey'\n      AND r.medal IS NOT NULL\n)\nSELECT medal, COUNT(*) AS medal_count\nFROM awards\nGROUP BY medal\nORDER BY medal;",
+    "expectedRows": [
+      {
+        "medal": "Gold",
+        "medal_count": 1
+      }
+    ],
+    "expectedAnswer": "Canada won one medal in men's ice hockey: gold.",
+    "reviewNotes": "The 22 player records represent one team medal. A pattern containing only 'men' can also match 'Women' and incorrectly include the women's event."
+  },
+  {
+    "id": "multiple-venues",
+    "question": "Which medal events used more than one venue, and how many venues did each use?",
+    "purpose": "Join events to venues, group by event, and keep only events with multiple venues.",
+    "referenceSql": "SELECT e.name AS event, COUNT(*) AS venue_count\nFROM event AS e\nJOIN event_venue AS ev ON ev.event_id = e.event_id\nGROUP BY e.event_id, e.name\nHAVING COUNT(*) > 1\nORDER BY e.name;",
+    "expectedRows": [
+      {
+        "event": "Ice Hockey Men's Ice Hockey",
+        "venue_count": 2
+      },
+      {
+        "event": "Ice Hockey Women's Ice Hockey",
+        "venue_count": 2
+      },
+      {
+        "event": "Nordic Combined Men's Individual",
+        "venue_count": 2
+      },
+      {
+        "event": "Nordic Combined Men's Sprint",
+        "venue_count": 2
+      },
+      {
+        "event": "Nordic Combined Men's Team",
+        "venue_count": 2
+      }
+    ],
+    "expectedAnswer": "Five events used two venues each: men's and women's ice hockey, and men's individual, sprint, and team Nordic combined.",
+    "reviewNotes": "There should be five events, each with a count of two. Results should not be joined into this count, since they would multiply the venue links."
+  },
+  {
+    "id": "pairs-gold-tie",
+    "question": "Which countries won gold in pairs figure skating?",
+    "purpose": "Keep both gold-winning countries while avoiding duplicate entries for each pair's athletes.",
+    "referenceSql": "SELECT DISTINCT c.name AS country\nFROM result AS r\nJOIN country AS c ON c.country_code = r.country_code\nJOIN event AS e ON e.event_id = r.event_id\nWHERE e.name = 'Figure Skating Mixed Pairs'\n  AND r.medal = 'Gold'\nORDER BY c.name;",
+    "expectedRows": [
+      {
+        "country": "Canada"
+      },
+      {
+        "country": "Russia"
+      }
+    ],
+    "expectedAnswer": "Canada and Russia both won gold in pairs figure skating.",
+    "reviewNotes": "Return both countries once each, rather than one country or four athlete rows."
+  },
+  {
+    "id": "unsupported-final-score",
+    "question": "What was the score of the men's ice hockey final?",
+    "purpose": "Recognize a question the stored data cannot answer.",
+    "referenceSql": null,
+    "expectedRows": null,
+    "expectedAnswer": "This database cannot answer that question because it does not store individual matches or scores.",
+    "reviewNotes": "SQL generation should return UNSUPPORTED: with a reason. It should not invent a score column, use medal counts as scores, or supply the score from the model's memory."
+  }
+]

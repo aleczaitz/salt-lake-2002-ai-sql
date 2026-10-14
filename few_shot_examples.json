@@ -1,0 +1,14 @@
+[
+  {
+    "question": "How many athletes won at least one medal for Germany?",
+    "sql": "SELECT COUNT(DISTINCT r.athlete_id) AS medalist_count\nFROM result AS r\nJOIN country AS c ON c.country_code = r.country_code\nWHERE c.name = 'Germany'\n  AND r.medal IS NOT NULL;"
+  },
+  {
+    "question": "How many bronze medals did Finland win?",
+    "sql": "WITH bronze_awards AS (\n    SELECT DISTINCT r.country_code, r.event_id, r.medal,\n        CASE WHEN e.is_team_event = 1 THEN r.team ELSE CAST(r.athlete_id AS TEXT) END AS entry\n    FROM result AS r\n    JOIN event AS e ON e.event_id = r.event_id\n    JOIN country AS c ON c.country_code = r.country_code\n    WHERE c.name = 'Finland' AND r.medal = 'Bronze'\n)\nSELECT COUNT(*) AS bronze_medals FROM bronze_awards;"
+  },
+  {
+    "question": "Which venues hosted the men's Nordic combined sprint?",
+    "sql": "SELECT v.name AS venue\nFROM event AS e\nJOIN event_venue AS ev ON ev.event_id = e.event_id\nJOIN venue AS v ON v.venue_id = ev.venue_id\nWHERE e.name = 'Nordic Combined Men''s Sprint'\nORDER BY v.name;"
+  }
+]

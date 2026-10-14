@@ -1,0 +1,18 @@
+{
+  "questionId": "distinct-athletes",
+  "question": "How many different athletes represented the United States?",
+  "style": "zero-shot",
+  "startedAt": "2026-10-14T17:24:57.277Z",
+  "finishedAt": "2026-10-14T17:25:01.973Z",
+  "status": "answered",
+  "failedStage": null,
+  "apiRequests": 2,
+  "sqlResponse": "SELECT COUNT(DISTINCT r.athlete_id)\nFROM result AS r\nJOIN country AS c ON c.country_code = r.country_code\nWHERE c.name = 'United States';",
+  "rows": [
+    {
+      "COUNT(DISTINCT r.athlete_id)": 202
+    }
+  ],
+  "answer": "202 different athletes represented the United States.",
+  "error": null
+}

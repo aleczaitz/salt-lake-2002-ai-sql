@@ -1,0 +1,14 @@
+{
+  "questionId": "pairs-gold-tie",
+  "question": "Which countries won gold in pairs figure skating?",
+  "style": "few-shot",
+  "startedAt": "2026-10-14T17:16:37.850Z",
+  "finishedAt": "2026-10-14T17:16:41.824Z",
+  "status": "answered",
+  "failedStage": null,
+  "apiRequests": 2,
+  "sqlResponse": "SELECT DISTINCT c.name AS country\nFROM result AS r\nJOIN event AS e ON e.event_id = r.event_id\nJOIN country AS c ON c.country_code = r.country_code\nWHERE e.name = 'Figure Skating Pairs'\n  AND r.medal = 'Gold'\nORDER BY c.name;",
+  "rows": [],
+  "answer": "The query returned no results.",
+  "error": null
+}

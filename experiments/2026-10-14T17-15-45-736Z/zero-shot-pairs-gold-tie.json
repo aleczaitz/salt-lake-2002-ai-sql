@@ -1,0 +1,21 @@
+{
+  "questionId": "pairs-gold-tie",
+  "question": "Which countries won gold in pairs figure skating?",
+  "style": "zero-shot",
+  "startedAt": "2026-10-14T17:16:32.184Z",
+  "finishedAt": "2026-10-14T17:16:37.850Z",
+  "status": "answered",
+  "failedStage": null,
+  "apiRequests": 2,
+  "sqlResponse": "SELECT DISTINCT country.name\nFROM result\nJOIN event ON event.event_id = result.event_id\nJOIN country ON country.country_code = result.country_code\nWHERE event.name LIKE '%Figure Skating%'\n  AND event.name LIKE '%Pairs%'\n  AND result.medal = 'Gold';",
+  "rows": [
+    {
+      "name": "Russia"
+    },
+    {
+      "name": "Canada"
+    }
+  ],
+  "answer": "Russia and Canada won gold in pairs figure skating.",
+  "error": null
+}
